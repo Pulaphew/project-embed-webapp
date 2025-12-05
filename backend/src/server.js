@@ -2,6 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import classifyRoutes from "./routes/classifyRoutes.js"; // Import classify routes
+import netpieRoutes from "./routes/netpieRoutes.js";  
+import { connectNetpie } from "./netpie/mqttClient.js";
 
 dotenv.config();
 
@@ -18,6 +20,9 @@ app.use(
 
 // Use classify routes
 app.use("/api/classify", classifyRoutes);
+app.use("/api/netpie", netpieRoutes);
+
+connectNetpie();
 
 // Start the server
 const port = process.env.PORT || 8000;

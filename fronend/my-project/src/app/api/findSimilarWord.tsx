@@ -3,7 +3,7 @@ export const findSimilarWord = async (text: string): Promise<string> => {
     // Construct the API URL using environment variables
     const backendUrl = process.env.REACT_APP_BACKEND_URL;
     const backendPort = process.env.REACT_APP_BACKEND_PORT;
-    const apiUrl = `${backendUrl}:${backendPort}/classify`;
+    const apiUrl = `${backendUrl}:${backendPort}/api/classify`;
 
     console.log('API URL:', apiUrl);
 
