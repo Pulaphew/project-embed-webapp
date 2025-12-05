@@ -11,21 +11,29 @@ connectNetpie();
  * Publish a message to the specified topic
  */
 
-router.post('/publlish', (req, res) => {
-    const {topic, payload} = req.body || {};
-    if (!topic) return res.status(400).json({error: "Topic is required"});
+router.post('/publish', (req, res) => {
+    const { topic, payload, qos = 1, retain = false } = req.body || {};
+
+    if (!topic) return res.status(400).json({ error: "Topic is required" });
 
     const client = getClient();
     if (!client || !client.connected) {
-        return res.status(500).json({error: "MQTT client not connected"});
+        return res.status(500).json({ error: "MQTT client not connected" });
     }
 
-    const message = typeof payload === 'string' ? payload : JSON.stringify(payload); // Convert payload to string if it's not
-    client.publish(topic, message, (err) => {
-        if (err) return res.status(500).json({error: err.message});
-        res.json({ok: true});
-    })
-})
+    // Correct NETPIE namespace
+    const mqttTopic = topic.startsWith('@') ? topic : `@msg/${topic}`;
+
+    // Force string payload
+    const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+    client.publish(mqttTopic, message, { qos, retain }, (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        console.log(`Published to ${mqttTopic}: ${message}`);
+        res.json({ ok: true, topic: mqttTopic });
+    });
+});
+
 
 /**
  * POST /api/netpie/subscribe
@@ -45,6 +53,7 @@ router.post('/subscribe',(req,res) => {
     client.subscribe(topic, {qos:1},(err, granted) => {
         if (err) return res.status(500).json({error: err.message});
         res.json({ok: true, granted});
+        console.log(`Subscribed to ${topic}:`, granted);
     })
 })
 
