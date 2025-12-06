@@ -22,7 +22,7 @@ export async function logToGoogleSheet(data) {
     // So we just pass it directly.
     await sheet.addRow(data);
 
-    console.log('Data saved to Google Sheet:', data);
+    // console.log('Data saved to Google Sheet:', data);
   } catch (error) {
     console.error('Error saving to Google Sheet:', error);
   }

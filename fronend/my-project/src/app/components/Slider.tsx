@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import styles from './Slider.module.css';
+import { publishToNetpie } from '../api/netpiePublish';
 
 type Mode = 'manual' | 'templight';
 
@@ -29,6 +30,9 @@ export default function Slider({
   animationDelay = 100,
 }: Props) {
   const [entered, setEntered] = useState(false);
+  const [currentMode, setCurrentMode] = useState<string>(mode); 
+
+  const mountedRef = useRef(false);
 
   useEffect(() => {
     const t = setTimeout(() => setEntered(true), animationDelay);
@@ -36,6 +40,27 @@ export default function Slider({
   }, [animationDelay, mode]);
 
   const ticks = useMemo(() => [0, 25, 50, 75, 100], []);
+
+  const setAndPublish = (value: any) => {
+    let payload = null;
+    switch (mode) {
+      case 'manual':
+        setCurrentMode('manual-command');
+        payload = value;
+        break;
+      case 'templight':
+        setCurrentMode('templight-command');
+        payload = value;
+        break;
+      default:
+        break;
+    }
+    if (payload !== null) {
+      publishToNetpie(currentMode, payload).catch((err) => {
+        console.error('publishToNetpie error:', err);
+      });
+    }
+  }
 
   // snap helper for manual slider (now includes 50)
   const snapToAllowed = (v: number) => {
@@ -81,6 +106,22 @@ export default function Slider({
     type: 'manual' | 'temp' | 'light';
     label?: string;
   }) {
+
+    useEffect(() => {
+      if (!mountedRef.current){
+        mountedRef.current = true;
+        if (mode === 'manual') {
+          setAndPublish(clamp(Math.round(manualValue)));
+        }
+        else if(mode === 'templight'){
+          setAndPublish({
+            temp: clamp(Math.round(tempValue)),
+            light: clamp(Math.round(lightValue)),
+          })
+        }
+      }
+    }, []); // run only on mount
+
     // show the snapped/clamped value for manual so UI always reflects allowed values
     const displayed = type === 'manual' ? snapToAllowed(clamp(Math.round(value))) : clamp(Math.round(value));
 
@@ -151,7 +192,10 @@ export default function Slider({
 
           <RangeRow
             value={manualValue}
-            onChange={(v) => onManualChange?.(v)}
+            onChange={(v) => {
+              onManualChange?.(v)
+              setAndPublish(v);
+            }}
             type="manual"
           />
         </div>
@@ -162,13 +206,25 @@ export default function Slider({
           <RangeRow
             label="temp limit"
             value={tempValue}
-            onChange={(v) => onTempChange?.(v)}
+            onChange={(v) => {
+              onTempChange?.(v)
+              setAndPublish({
+                temp: v,
+                light: lightValue,
+              });
+            }}
             type="temp"
           />
           <RangeRow
             label="light limit"
             value={lightValue}
-            onChange={(v) => onLightChange?.(v)}
+            onChange={(v) => {
+              onLightChange?.(v)
+              setAndPublish({
+                temp: tempValue,
+                light: v,
+              });
+            }}
             type="light"
           />
         </div>
