@@ -1,5 +1,6 @@
 // ...existing code...
 import mqtt from 'mqtt';
+import { logToGoogleSheet } from '../services/googleSheets.js'; 
 
 let client = null;
 
@@ -37,6 +38,16 @@ export function connectNetpie() {
 
     client.on('connect',() => {
         console.log("MQTT connected to ", brokerUrl, " clientId: ", clientId);
+        
+        // SUBSCRIBE to the topic sending sensor data
+        // Replace '@msg/sensors' with your actual sensor topic
+        client.subscribe('@msg/sensors', (err) => {
+            if(!err) console.log("Subscribed to sensor data");
+        });
+    });
+
+    client.on('connect',() => {
+        console.log("MQTT connected to ", brokerUrl, " clientId: ", clientId);
     });
 
     client.on("reconnect",() => console.log("MQTT reconnecting..."));
@@ -45,6 +56,26 @@ export function connectNetpie() {
     client.on("error",(err) => console.log("MQTT error: ", err));
     client.on("message",(topic,message) => {
         console.log("MQTT message received on topic ", topic, ": ", message.toString());
+    });
+
+    client.on("message", async (topic, message) => {
+        const msgString = message.toString();
+        console.log("MQTT message received on topic ", topic, ": ", msgString);
+
+        //Check if the topic matches your sensor data topic
+        if (topic === '@msg/sensors') {
+            try {
+                // Parse the JSON data from NETPIE
+                // Example Payload: {"temperature": 32, "humidity": 60}
+                const data = JSON.parse(msgString);
+                
+                // Send to Google Sheets
+                await logToGoogleSheet(data);
+                
+            } catch (e) {
+                console.error("Failed to parse JSON or save to sheet", e);
+            }
+        }
     });
 
     return client;
