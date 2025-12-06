@@ -1,5 +1,6 @@
 // ...existing code...
 import mqtt from 'mqtt';
+import { logToGoogleSheet } from '../services/googleSheets.js'; 
 import { broadcastJSON } from '../ws/wsServer.js';
 
 let client = null;
@@ -38,6 +39,16 @@ export function connectNetpie() {
 
     client.on('connect',() => {
         console.log("MQTT connected to ", brokerUrl, " clientId: ", clientId);
+        
+        // SUBSCRIBE to the topic sending sensor data
+        // Replace '@msg/sensors' with your actual sensor topic
+        client.subscribe('@msg/sensors', (err) => {
+            if(!err) console.log("Subscribed to sensor data");
+        });
+    });
+
+    client.on('connect',() => {
+        console.log("MQTT connected to ", brokerUrl, " clientId: ", clientId);
 
         const topics = [
             "@msg/gateway-data"
@@ -60,11 +71,28 @@ export function connectNetpie() {
     client.on("close",() => console.log("MQTT disconnected"));
     client.on("offline",() => console.log("MQTT offline"));
     client.on("error",(err) => console.log("MQTT error: ", err));
-    client.on("message",(topic,message) => {
-        // console.log("MQTT message received on topic ", topic, ": ", message.toString());
+
+    client.on("message", async (topic, message) => {// console.log("MQTT message received on topic ", topic, ": ", message.toString());
+        
+        const msgString = message.toString();
+        console.log("MQTT message received on topic ", topic, ": ", msgString);
         if (topic === "@msg/gateway-data") {
             console.log("Gateway Data: ", message.toString());
             broadcastJSON({topic, message: message.toString(), ts: Date.now()});
+        }
+        //Check if the topic matches your sensor data topic
+        if (topic === '@msg/sensors') {
+            try {
+                // Parse the JSON data from NETPIE
+                // Example Payload: {"temperature": 32, "humidity": 60}
+                const data = JSON.parse(msgString);
+                
+                // Send to Google Sheets
+                await logToGoogleSheet(data);
+                
+            } catch (e) {
+                console.error("Failed to parse JSON or save to sheet", e);
+            }
         }
     });
 
