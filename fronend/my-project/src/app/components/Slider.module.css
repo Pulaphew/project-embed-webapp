@@ -1,0 +1,158 @@
+.container {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 360ms ease, transform 360ms ease;
+  width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  margin-bottom: 25px;
+
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.enter {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.manual,
+.templight {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.labelRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #333;
+  margin-bottom: 6px;
+  font-weight: 400;
+}
+
+/* common range row */
+.rangeRow {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: #222;
+  margin-bottom: 6px;
+}
+
+/* wrapper that contains the input range + overlayed badge + ticks */
+.trackWrap {
+  position: relative;
+  width: 100%;
+}
+
+/* input range styling */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  width: 100%;
+  border-radius: 999px;
+  outline: none;
+  margin: 0;
+  padding: 0;
+  background-color: transparent; /* background set inline for colored fill */
+  position: relative;
+  z-index: 1;
+}
+
+/* webkit track/appearance trimming */
+.range::-webkit-slider-runnable-track {
+  height: 10px;
+  -webkit-appearance: none;
+  border-radius: 999px;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background: #222;
+  border-radius: 50%;
+  margin-top: -6px; /* center thumb vertically */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  position: relative;
+  z-index: 3;
+  cursor: pointer;
+}
+
+/* Firefox thumb */
+.range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background: #222;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  border: none;
+  cursor: pointer;
+}
+
+/* badge above the thumb showing the value */
+.badge {
+  position: absolute;
+  top: -32px;
+  transform: translateX(0);
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  border-radius: 10px;
+  z-index: 4;
+  pointer-events: none;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* ticks container (manual only) */
+.ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  height: 20px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* individual tick */
+.tick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 8px;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* label for tick */
+.tickLabel {
+  position: absolute;
+  top: 10px;
+  font-size: 0.72rem;
+  color: #333;
+  transform: translateX(-50%);
+}
+
+/* small responsiveness for narrow view */
+@media (max-width: 420px) {
+  .badge { top: -28px; font-size: 0.7rem; padding: 3px 5px; }
+  .range::-webkit-slider-thumb, .range::-moz-range-thumb { width: 18px; height: 18px; margin-top: -5px; }
+}

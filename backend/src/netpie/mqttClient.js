@@ -1,5 +1,6 @@
 // ...existing code...
 import mqtt from 'mqtt';
+import { broadcastJSON } from '../ws/wsServer.js';
 
 let client = null;
 
@@ -37,6 +38,22 @@ export function connectNetpie() {
 
     client.on('connect',() => {
         console.log("MQTT connected to ", brokerUrl, " clientId: ", clientId);
+
+        const topics = [
+            "@msg/gateway-data"
+        ]
+
+        topics.forEach((topic) => {
+            client.subscribe(topic, {qos:1}, (err) => {
+                if (err) console.log("MQTT subscribe error to topic: ", topic, "with", err);
+                else console.log("Subscribed to topic: ", topic);
+            });
+        });
+
+        client.subscribe("@msg/gateway-data",{qos:1}, (err) => {
+            if (err) console.log("MQTT subscribe error: ", err);
+            
+        });
     });
 
     client.on("reconnect",() => console.log("MQTT reconnecting..."));
@@ -44,7 +61,11 @@ export function connectNetpie() {
     client.on("offline",() => console.log("MQTT offline"));
     client.on("error",(err) => console.log("MQTT error: ", err));
     client.on("message",(topic,message) => {
-        console.log("MQTT message received on topic ", topic, ": ", message.toString());
+        // console.log("MQTT message received on topic ", topic, ": ", message.toString());
+        if (topic === "@msg/gateway-data") {
+            console.log("Gateway Data: ", message.toString());
+            broadcastJSON({topic, message: message.toString(), ts: Date.now()});
+        }
     });
 
     return client;
