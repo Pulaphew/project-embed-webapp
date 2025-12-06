@@ -15,20 +15,14 @@ const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, serviceAccountAut
 
 export async function logToGoogleSheet(data) {
   try {
-    await doc.loadInfo(); // loads document properties and worksheets
-    
-    // Get the first sheet (index 0)
+    await doc.loadInfo();
     const sheet = doc.sheetsByIndex[0];
 
-    // Prepare row data based on your input
-    // Assuming 'data' is an object like { temperature: 25, humidity: 60 }
-    const row = {
-      timestamp: newjhDate().toLocaleString(),
-      ...data 
-    };
+    // The data already contains 'timestamp', 'light', etc.
+    // So we just pass it directly.
+    await sheet.addRow(data);
 
-    await sheet.addRow(row);
-    console.log('Data saved to Google Sheet');
+    console.log('Data saved to Google Sheet:', data);
   } catch (error) {
     console.error('Error saving to Google Sheet:', error);
   }

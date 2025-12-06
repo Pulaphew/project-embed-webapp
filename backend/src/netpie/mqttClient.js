@@ -79,19 +79,21 @@ export function connectNetpie() {
         if (topic === "@msg/gateway-data") {
             console.log("Gateway Data: ", message.toString());
             broadcastJSON({topic, message: message.toString(), ts: Date.now()});
-        }
-        //Check if the topic matches your sensor data topic
-        if (topic === '@msg/sensors') {
             try {
-                // Parse the JSON data from NETPIE
-                // Example Payload: {"temperature": 32, "humidity": 60}
-                const data = JSON.parse(msgString);
-                
-                // Send to Google Sheets
-                await logToGoogleSheet(data);
-                
+                const parsedMessage = JSON.parse(msgString);
+
+                // CORRECTION: Access the inner '.data' property
+                const sensorData = parsedMessage.data; 
+
+                // Send just the inner data to the sheet function
+                if (sensorData) {
+                    await logToGoogleSheet(sensorData);
+                } else {
+                    console.warn("Received message but no 'data' property found");
+                }
+
             } catch (e) {
-                console.error("Failed to parse JSON or save to sheet", e);
+                console.error("Failed to parse JSON", e);
             }
         }
     });
