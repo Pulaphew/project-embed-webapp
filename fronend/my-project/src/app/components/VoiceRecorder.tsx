@@ -57,7 +57,7 @@ export default function VoiceRecorder() {
       try {
         const similarWord = await findSimilarWord(speechResult);
         setSimilarWord(similarWord); // Update the similar word
-        setMessage('Similar word found successfully!');
+        setMessage('Received command successfully!');
       } catch (error) {
         setMessage('Error: Could not fetch similar word.');
       }
@@ -114,16 +114,16 @@ export default function VoiceRecorder() {
       )}
 
       {/* Display Transcript */}
-      {transcript && (
+      {/* {transcript && (
         <p className="mt-4 text-lg text-gray-800">
           You said: <span className="font-bold">{transcript}</span>
         </p>
-      )}
+      )} */}
 
       {/* Display Similar Word */}
       {similarWord && (
-        <p className="mt-4 text-lg text-blue-800">
-          Similar word: <span className="font-bold">{similarWord}</span>
+        <p className="mt-2 text-lg text-gray-800">
+          Command: <span className="font-bold">{similarWord}</span>
         </p>
       )}
     </div>
