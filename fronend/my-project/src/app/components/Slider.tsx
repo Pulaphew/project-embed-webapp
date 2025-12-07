@@ -26,7 +26,7 @@ function clamp(v: number) {
 
 export default function Slider({
   mode,
-  manualValue = 50,
+  manualValue = 0,
   onManualChange,
   tempValue = 25,
   onTempChange,

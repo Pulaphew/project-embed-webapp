@@ -27,7 +27,7 @@ type GatewayPayload = {
 
 export default function Home() {
   const [activeSwitch, setActiveSwitch] = useState<string>(''); // Tracks which switch is enabled
-  const [manualValue, setManualValue] = useState<number>(50);
+  const [manualValue, setManualValue] = useState<number>(0);
   const [tempValue, setTempValue] = useState<number>(25);
   const [lightValue, setLightValue] = useState<number>(75);
 
@@ -106,7 +106,10 @@ export default function Home() {
 
         {/* Render VoiceRecorder with AnimatedDiv */}
         <AnimatedDiv isVisible={activeSwitch === 'voice'}>
-          <VoiceRecorder />
+          <VoiceRecorder 
+            curtainEnabled={curtainEnabled}
+            curtainReady={curtainReady}
+          />
         </AnimatedDiv>
         <AnimatedDiv isVisible={activeSwitch === 'manual'}>
           <Slider 

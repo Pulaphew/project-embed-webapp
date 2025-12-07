@@ -5,7 +5,12 @@ import { AudioOutlined } from '@ant-design/icons'; // Ant Design mic icon
 import 'antd/dist/reset.css'; // Ensure Ant Design styles are imported
 import { findSimilarWord } from '../api/findSimilarWord'; // Import the API function
 
-export default function VoiceRecorder() {
+type Props = {
+  curtainEnabled?: number;       // 1 = enabled, 0 = disabled
+  curtainReady?: boolean;        // true when we have received curtain status
+}
+
+export default function VoiceRecorder({ curtainEnabled = 1, curtainReady = false }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState(''); // Recognized speech
   const [similarWord, setSimilarWord] = useState(''); // Similar word from backend
@@ -15,6 +20,16 @@ export default function VoiceRecorder() {
   const timerRef = useRef<NodeJS.Timeout | null>(null); // Reference to the timer
 
   const startRecording = () => {
+
+    if (!curtainReady) {
+      setMessage('Curtain status not ready');
+      return;
+    }
+    if (curtainEnabled === 0) {
+      setMessage('Curtain control is disabled');
+      return;
+    }
+
     if (isRecording) {
       // Stop recording if already recording
       setIsRecording(false);
@@ -89,13 +104,18 @@ export default function VoiceRecorder() {
     recognition.start();
   };
 
+  const disabled = curtainEnabled === 0 || !curtainReady;
+
   return (
     <div className="flex flex-col items-center mt-4">
       {/* Microphone Icon */}
       <button
         onClick={startRecording}
+        disabled={disabled}
         className={`flex items-center justify-center w-20 h-20 rounded-full border-4 border-gray-400 ${
-          isRecording ? 'bg-red-500 text-white' : 'bg-none text-gray-500'
+          disabled
+            ? 'opacity-50 cursor-not-allowed'
+            : isRecording ? 'bg-red-500 text-white' : 'bg-none text-gray-500'
         } hover:bg-blue-500 hover:text-white hover:scale-110 transition-all duration-300`}
       >
         <AudioOutlined className="text-4xl" />
