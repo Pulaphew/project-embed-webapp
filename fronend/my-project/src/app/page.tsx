@@ -32,8 +32,10 @@ export default function Home() {
   const [lightValue, setLightValue] = useState<number>(75);
 
   // latest now typed to GatewayPayload | null
-  const [latest, setLatest] = useState<GatewayPayload | null>(null);
+  const [lastest, setLatest] = useState<GatewayPayload | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [lastMessageAt, setLastMessageAt] = useState<number | null>(null);
+  const [isStale, setIsStale] = useState(true); // start as stale until first message
 
   useEffect(() => {
     const host = window.location.hostname;
@@ -49,19 +51,41 @@ export default function Home() {
         // backend sends message as stringified JSON in raw.message (with .data field)
         const parsed = JSON.parse(raw.message) as GatewayPayload;
         setLatest(parsed);
+        setLastMessageAt(Date.now());
+        setIsStale(false);
       } catch {
         // ignore invalid payload
       }
     };
-    ws.onclose = () => setWsConnected(false);
-    ws.onerror = () => setWsConnected(false);
+    ws.onclose = () => {
+      setWsConnected(false)
+      setIsStale(true);
+    };
+    ws.onerror = () => {
+      setWsConnected(false)
+      setIsStale(true);
+    };
 
     return () => ws.close();
   }, []);
 
+  // Mark data as stale if no message within STALE_MS
+  useEffect(() => {
+    const STALE_MS = 5000; // 5 seconds
+    const id = setInterval(() => {
+      if (lastMessageAt && Date.now() - lastMessageAt > STALE_MS) {
+        setIsStale(true);
+      }
+    }, 1000) // check every second
+    return () => clearInterval(id);
+  }, [lastMessageAt])
+
   const handleToggle = (value: string) => {
     setActiveSwitch(value); // Update the active switch
   };
+
+  const curtainEnabled = isStale ? 0 : lastest?.data?.curtainEnabled ?? 0;
+  const curtainReady = !isStale && lastest?.data?.curtainEnabled !== undefined;
 
   return (
     <div
@@ -74,8 +98,8 @@ export default function Home() {
 
       <div className="w-[85vw] bg-[#E3E3E3] rounded-lg p-4 mt-10">
         <CurtainStatus
-          curtainEnabled={latest?.data?.curtainEnabled ?? 0}
-          timestamp={latest?.data?.timestamp ?? null}
+          curtainEnabled={lastest?.data?.curtainEnabled ?? 0}
+          timestamp={lastest?.data?.timestamp ?? null}
         />
         {/* Use the SwitchPanel component */}
         <SwitchPanel activeSwitch={activeSwitch} onToggle={handleToggle} />
@@ -85,17 +109,26 @@ export default function Home() {
           <VoiceRecorder />
         </AnimatedDiv>
         <AnimatedDiv isVisible={activeSwitch === 'manual'}>
-          <Slider mode="manual" manualValue={manualValue} onManualChange={setManualValue} animationDelay={120} />
+          <Slider 
+            mode="manual" 
+            manualValue={manualValue} 
+            onManualChange={setManualValue} 
+            curtainEnabled={curtainEnabled}
+            curtainReady={curtainReady}
+            animationDelay={120} 
+            />
         </AnimatedDiv>
         <AnimatedDiv isVisible={activeSwitch === 'templight'}>
           {/* Render GatewayPanel */}
-          <GatewayPanel latest={latest} wsConnected={wsConnected} />
+          <GatewayPanel latest={lastest} wsConnected={wsConnected} />
           <Slider
             mode="templight"
             tempValue={tempValue}
             onTempChange={setTempValue}
             lightValue={lightValue}
             onLightChange={setLightValue}
+            curtainEnabled={curtainEnabled}
+            curtainReady={curtainReady}
             animationDelay={120}
           />
         </AnimatedDiv>

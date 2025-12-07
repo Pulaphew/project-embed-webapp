@@ -1,4 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { message } from 'antd';
 import styles from './Slider.module.css';
 import { publishToNetpie } from '../api/netpiePublish';
 
@@ -12,7 +15,9 @@ interface Props {
   onTempChange?: (v: number) => void;
   lightValue?: number;
   onLightChange?: (v: number) => void;
-  animationDelay?: number; // ms
+  curtainEnabled?: number;       // 1 = enabled, 0 = disabled
+  curtainReady?: boolean;        // true when we have received curtain status
+  animationDelay?: number;       // ms
 }
 
 function clamp(v: number) {
@@ -27,42 +32,49 @@ export default function Slider({
   onTempChange,
   lightValue = 75,
   onLightChange,
+  curtainEnabled = 1,
+  curtainReady = false,
   animationDelay = 100,
 }: Props) {
   const [entered, setEntered] = useState(false);
-  const [currentMode, setCurrentMode] = useState<string>(mode); 
-
-  const mountedRef = useRef(false);
+  const [msgApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     const t = setTimeout(() => setEntered(true), animationDelay);
     return () => clearTimeout(t);
   }, [animationDelay, mode]);
 
-  const ticks = useMemo(() => [0, 25, 50, 75, 100], []);
+  // Publish once when mode changes AND curtain status is known
+  useEffect(() => {
+    if (!curtainReady) return;
 
-  const setAndPublish = (value: any) => {
-    let payload = null;
-    switch (mode) {
-      case 'manual':
-        setCurrentMode('manual-command');
-        payload = value;
-        break;
-      case 'templight':
-        setCurrentMode('templight-command');
-        payload = value;
-        break;
-      default:
-        break;
-    }
-    if (payload !== null) {
-      publishToNetpie(currentMode, payload).catch((err) => {
-        console.error('publishToNetpie error:', err);
+    if (mode === 'manual') {
+      tryPublish('manual-command', clamp(Math.round(manualValue)));
+    } else if (mode === 'templight') {
+      tryPublish('templight-command', {
+        temp: clamp(Math.round(tempValue)),
+        light: clamp(Math.round(lightValue)),
       });
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, curtainReady]);
 
-  // snap helper for manual slider (now includes 50)
+  const tryPublish = (topic: string, payload: any) => {
+    // Skip silently until we know curtain status
+    if (!curtainReady) {
+      return;
+    }
+    if (!curtainEnabled) {
+      msgApi.warning('please enabled Curtain before use');
+      return;
+    }
+    publishToNetpie(topic, payload).catch((err) => {
+      console.error('publishToNetpie error:', err);
+    });
+  };
+
+  const ticks = useMemo(() => [0, 25, 50, 75, 100], []);
+
   const snapToAllowed = (v: number) => {
     const allowed = [0, 25, 50, 75, 100];
     let nearest = allowed[0];
@@ -77,7 +89,6 @@ export default function Slider({
     return nearest;
   };
 
-  // Helper that produces inline style for track fill/background
   const trackStyleFor = (value: number, type: 'manual' | 'temp' | 'light') => {
     const pct = clamp(Math.round(value));
     if (type === 'manual') {
@@ -94,7 +105,6 @@ export default function Slider({
     } as React.CSSProperties;
   };
 
-  // Small reusable range row with badge & ticks
   function RangeRow({
     value,
     onChange,
@@ -106,23 +116,6 @@ export default function Slider({
     type: 'manual' | 'temp' | 'light';
     label?: string;
   }) {
-
-    useEffect(() => {
-      if (!mountedRef.current){
-        mountedRef.current = true;
-        if (mode === 'manual') {
-          setAndPublish(clamp(Math.round(manualValue)));
-        }
-        else if(mode === 'templight'){
-          setAndPublish({
-            temp: clamp(Math.round(tempValue)),
-            light: clamp(Math.round(lightValue)),
-          })
-        }
-      }
-    }, []); // run only on mount
-
-    // show the snapped/clamped value for manual so UI always reflects allowed values
     const displayed = type === 'manual' ? snapToAllowed(clamp(Math.round(value))) : clamp(Math.round(value));
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,7 +146,6 @@ export default function Slider({
             aria-label={`${type}-slider`}
           />
 
-          {/* numeric badge above thumb */}
           <div
             className={styles.badge}
             style={{ left: `calc(${pct}% - 12px)` }}
@@ -162,7 +154,6 @@ export default function Slider({
             {pct}
           </div>
 
-          {/* ticks for manual mode */}
           {type === 'manual' && (
             <div className={styles.ticks}>
               {ticks.map((t) => (
@@ -182,53 +173,57 @@ export default function Slider({
   }
 
   return (
-    <div className={`${styles.container} ${entered ? styles.enter : ''}`}>
-      {mode === 'manual' && (
-        <div className={styles.manual}>
-          <div className={styles.labelRow}>
-            <span>close</span>
-            <span>open</span>
+    <>
+      {contextHolder}
+      <div className={`${styles.container} ${entered ? styles.enter : ''}`}>
+        {mode === 'manual' && (
+          <div className={styles.manual}>
+            <div className={styles.labelRow}>
+              <span>close</span>
+              <span>open</span>
+            </div>
+
+            <RangeRow
+              value={manualValue}
+              onChange={(v) => {
+                onManualChange?.(v);
+                const snapped = snapToAllowed(v);
+                tryPublish('manual-command', snapped);
+              }}
+              type="manual"
+            />
           </div>
+        )}
 
-          <RangeRow
-            value={manualValue}
-            onChange={(v) => {
-              onManualChange?.(v)
-              setAndPublish(v);
-            }}
-            type="manual"
-          />
-        </div>
-      )}
-
-      {mode === 'templight' && (
-        <div className={styles.templight}>
-          <RangeRow
-            label="temp limit"
-            value={tempValue}
-            onChange={(v) => {
-              onTempChange?.(v)
-              setAndPublish({
-                temp: v,
-                light: lightValue,
-              });
-            }}
-            type="temp"
-          />
-          <RangeRow
-            label="light limit"
-            value={lightValue}
-            onChange={(v) => {
-              onLightChange?.(v)
-              setAndPublish({
-                temp: tempValue,
-                light: v,
-              });
-            }}
-            type="light"
-          />
-        </div>
-      )}
-    </div>
+        {mode === 'templight' && (
+          <div className={styles.templight}>
+            <RangeRow
+              label="temp limit"
+              value={tempValue}
+              onChange={(v) => {
+                onTempChange?.(v);
+                tryPublish('templight-command', {
+                  temp: clamp(Math.round(v)),
+                  light: clamp(Math.round(lightValue)),
+                });
+              }}
+              type="temp"
+            />
+            <RangeRow
+              label="light limit"
+              value={lightValue}
+              onChange={(v) => {
+                onLightChange?.(v);
+                tryPublish('templight-command', {
+                  temp: clamp(Math.round(tempValue)),
+                  light: clamp(Math.round(v)),
+                });
+              }}
+              type="light"
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
